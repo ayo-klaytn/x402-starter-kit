@@ -35,6 +35,9 @@ const CHAIN_IDS: Record<string, number> = {
   ethereum: 1,
   polygon: 137,
   'polygon-amoy': 80002,
+  // Kaia mainnet and testnet (Kairos)
+  kaia: 8217,
+  'kaia-kairos': 1001,
 };
 
 function selectPaymentRequirement(paymentRequired: any): PaymentRequirements {

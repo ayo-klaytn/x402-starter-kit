@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { EventQueue, RequestContext, TaskState } from './x402Types.js';
 
-type AiProvider = 'openai' | 'eigenai';
+type AiProvider = 'openai' | 'eigenai' | 'mock';
 
 interface ExampleServiceOptions {
   apiKey?: string;
@@ -57,6 +57,8 @@ export class ExampleService {
       if (!defaultHeaders?.['x-api-key']) {
         throw new Error('EIGENAI_API_KEY is required when using the EigenAI provider');
       }
+    } else if (provider === 'mock') {
+      // No external API required
     }
 
     if (baseUrl) {
@@ -67,6 +69,7 @@ export class ExampleService {
       clientOptions.defaultHeaders = defaultHeaders;
     }
 
+    // Initialize OpenAI client only if not using mock
     this.openai = new OpenAI(clientOptions);
     this.payToAddress = payToAddress;
     this.network = network;
@@ -94,28 +97,34 @@ export class ExampleService {
     console.log(`📝 User request: ${userMessage}`);
 
     try {
-      // Call OpenAI API to process the request
-      // REPLACE THIS with your own service logic
-      const completion = await this.openai.chat.completions.create({
-        model: this.model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a helpful AI assistant. Provide concise and accurate responses.',
-          },
-          {
-            role: 'user',
-            content: userMessage,
-          },
-        ],
-        temperature: this.temperature,
-        max_tokens: this.maxTokens,
-        ...(this.provider === 'eigenai' && this.seed !== undefined
-          ? { seed: this.seed }
-          : {}),
-      });
+      let response: string;
 
-      const response = completion.choices[0]?.message?.content || 'No response generated';
+      if (this.provider === 'mock') {
+        // Deterministic, offline response for testing payment flow
+        response = `Mock response to: "${userMessage}" (paid to ${this.payToAddress} on ${this.network})`;
+      } else {
+        // Call OpenAI-compatible API to process the request
+        const completion = await this.openai.chat.completions.create({
+          model: this.model,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a helpful AI assistant. Provide concise and accurate responses.',
+            },
+            {
+              role: 'user',
+              content: userMessage,
+            },
+          ],
+          temperature: this.temperature,
+          max_tokens: this.maxTokens,
+          ...(this.provider === 'eigenai' && this.seed !== undefined
+            ? { seed: this.seed }
+            : {}),
+        });
+
+        response = completion.choices[0]?.message?.content || 'No response generated';
+      }
 
       console.log(`🤖 Service response: ${response}`);
 

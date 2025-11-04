@@ -127,6 +127,7 @@ export interface MerchantExecutorOptions {
   privateKey?: string;
   assetAddress?: string;
   assetName?: string;
+  assetVersion?: string;
   explorerUrl?: string;
   chainId?: number;
 }
@@ -155,6 +156,7 @@ export class MerchantExecutor {
   private settlementWallet?: ethers.Wallet;
   private readonly network: Network;
   private readonly assetName: string;
+  private readonly assetVersion: string;
   private readonly chainId?: number;
 
   constructor(options: MerchantExecutorOptions) {
@@ -165,6 +167,7 @@ export class MerchantExecutor {
     const assetAddress =
       options.assetAddress ?? builtinConfig?.assetAddress;
     const assetName = options.assetName ?? builtinConfig?.assetName;
+    const assetVersion = options.assetVersion ?? '2';
     const chainId = options.chainId ?? builtinConfig?.chainId;
     const explorerUrl = options.explorerUrl ?? builtinConfig?.explorer;
 
@@ -182,6 +185,7 @@ export class MerchantExecutor {
 
     this.network = options.network;
     this.assetName = assetName;
+    this.assetVersion = assetVersion;
     this.chainId = chainId;
     this.explorerUrl = explorerUrl;
 
@@ -197,7 +201,7 @@ export class MerchantExecutor {
       maxTimeoutSeconds: 600,
       extra: {
         name: assetName,
-        version: '2',
+        version: assetVersion,
       },
     };
 
@@ -417,6 +421,11 @@ export class MerchantExecutor {
 
     try {
       const domain = this.buildEip712Domain(requirements);
+      console.log('\n🔍 EIP-712 Domain used for verification:');
+      console.log('   name:', domain.name);
+      console.log('   version:', domain.version);
+      console.log('   chainId:', domain.chainId);
+      console.log('   verifyingContract:', domain.verifyingContract);
       const recovered = ethers.verifyTypedData(
         domain,
         TRANSFER_AUTH_TYPES,
@@ -477,6 +486,13 @@ export class MerchantExecutor {
     }
 
     try {
+      const domain = this.buildEip712Domain(requirements);
+      console.log('\n🔍 EIP-712 Domain for on-chain settlement:');
+      console.log('   name:', domain.name);
+      console.log('   version:', domain.version);
+      console.log('   chainId:', domain.chainId);
+      console.log('   verifyingContract:', domain.verifyingContract);
+      
       const usdcContract = new ethers.Contract(
         requirements.asset,
         [
@@ -496,6 +512,12 @@ export class MerchantExecutor {
       );
 
       const parsedSignature = ethers.Signature.from(signature);
+      console.log('\n📝 Signature components:');
+      console.log('   v:', parsedSignature.v);
+      console.log('   r:', parsedSignature.r);
+      console.log('   s:', parsedSignature.s);
+      console.log('   signature hex:', signature);
+      
       const tx = await usdcContract.transferWithAuthorization(
         authorization.from,
         authorization.to,
@@ -579,7 +601,7 @@ export class MerchantExecutor {
   private buildEip712Domain(requirements: PaymentRequirements) {
     return {
       name: requirements.extra?.name || this.assetName,
-      version: requirements.extra?.version || '2',
+      version: requirements.extra?.version || this.assetVersion || '2',
       chainId: this.chainId,
       verifyingContract: requirements.asset,
     };

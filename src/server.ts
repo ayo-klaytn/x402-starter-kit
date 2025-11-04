@@ -31,6 +31,7 @@ const RPC_URL = process.env.RPC_URL;
 const SETTLEMENT_MODE_ENV = process.env.SETTLEMENT_MODE?.toLowerCase();
 const ASSET_ADDRESS = process.env.ASSET_ADDRESS;
 const ASSET_NAME = process.env.ASSET_NAME;
+const ASSET_VERSION = process.env.ASSET_VERSION;
 const EXPLORER_URL = process.env.EXPLORER_URL;
 const CHAIN_ID = process.env.CHAIN_ID
   ? Number.parseInt(process.env.CHAIN_ID, 10)
@@ -63,6 +64,9 @@ const SUPPORTED_NETWORKS: Network[] = [
   'peaq',
   'solana',
   'solana-devnet',
+  // Custom additions
+  'kaia' as Network,
+  'kaia-kairos' as Network,
 ];
 
 // Validate environment variables
@@ -76,6 +80,8 @@ if (AI_PROVIDER === 'openai') {
     console.error('❌ EIGENAI_API_KEY (or OPENAI_API_KEY fallback) is required when AI_PROVIDER=eigenai');
     process.exit(1);
   }
+} else if (AI_PROVIDER === 'mock') {
+  // No external keys required
 } else {
   console.error(
     `❌ AI_PROVIDER "${AI_PROVIDER}" is not supported. Supported providers: openai, eigenai`
@@ -118,7 +124,7 @@ if (settlementMode === 'direct' && !PRIVATE_KEY) {
 }
 
 const exampleService = new ExampleService({
-  provider: AI_PROVIDER === 'eigenai' ? 'eigenai' : 'openai',
+  provider: AI_PROVIDER === 'eigenai' ? 'eigenai' : AI_PROVIDER === 'mock' ? 'mock' : 'openai',
   apiKey: AI_PROVIDER === 'openai' ? OPENAI_API_KEY : undefined,
   baseUrl:
     AI_PROVIDER === 'eigenai'
@@ -151,6 +157,7 @@ const merchantOptions: MerchantExecutorOptions = {
   privateKey: PRIVATE_KEY,
   assetAddress: ASSET_ADDRESS,
   assetName: ASSET_NAME,
+  assetVersion: ASSET_VERSION,
   explorerUrl: EXPLORER_URL,
   chainId: CHAIN_ID,
 };
